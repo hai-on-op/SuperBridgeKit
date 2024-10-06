@@ -203,8 +203,7 @@ const main = async () => {
 
   // Combine all addresses for processing
   const allAddresses = [
-    //...new Set([...addresses.APXETH, ...addresses.RETH, ...addresses.WSTETH]),
-    "0xCAFd432b7EcAfff352D92fcB81c60380d437E99D"
+    ...new Set([...addresses.APXETH, ...addresses.RETH, ...addresses.WSTETH]),
   ];
 
   console.log(`Total unique addresses: ${allAddresses.length}`);
