@@ -1,52 +1,49 @@
-# OptiBridgeKit
+# Super Bridge Kit
 
-OptiBridgeKit is a TypeScript library for getting specific data from Optimism bridges. It provides a modular and extensible framework for interacting with various bridges on the Optimism network.
+This tool analyzes bridged token amounts for wstETH, rETH, and apxETH across different bridges on the Optimism network.
 
-## Installation
+## Setup
 
-```bash
-npm install optibridgekit
-```
+1. Clone the repository:
+   ```
+   git clone https://github.com/hai-on-op/rewards-bridge-kit
+   cd rewards-bridge-kit
+   ```
 
-## Usage
+2. Install dependencies:
+   ```
+   npm install
+   ```
 
-```typescript
-import { BridgeManager, BridgeInfo } from "optibridgekit";
+3. Create a `config.json` file based on `config.example.json`:
+   ```
+   cp config.example.json config.json
+   ```
 
-const bridgeInfos: BridgeInfo[] = [
-  { address: "0x4200000000000000000000000000000000000010", type: "standard" },
-  // Add more bridges as needed
-];
+4. Edit `config.json` and fill in your specific values:
+   - `API_KEY`: Your Covalent API key
+   - `CHAIN_ID`: The chain ID (default is "optimism-mainnet")
+   - `STANDARD_BRIDGE_ADDRESS`: The standard bridge contract address
+   - `LZ_EXECUTOR_ADDRESS`: The LayerZero executor address
+   - `CROSS_DOMAIN_MESSENGER_ADDRESS`: The cross-domain messenger address
+   - `APX_ETH_ADDRESS`: The apxETH token address
+   - `RETH_CONTRACT_ADDRESS`: The rETH token address
+   - `WSTETH_CONTRACT_ADDRESS`: The wstETH token address
+   - `FROM_BLOCK`: The starting block number for transaction filtering (default is 0)
+   - `TO_BLOCK`: The ending block number for transaction filtering (use null for latest)
 
-const bridgeManager = new BridgeManager(bridgeInfos);
+5. Create a `setup_files` directory in the project root:
+   ```
+   mkdir setup_files
+   ```
 
-async function main() {
-  const walletAddress = "0x...";
-  const tokens = ["0x...", "0x..."];
+6. Place your CSV files in the `setup_files` directory using the following naming convention:
+   - `collateral-APXETH.csv`
+   - `collateral-RETH.csv`
+   - `collateral-WSTETH.csv`
 
-  const balances = await bridgeManager.getBridgedBalances(
-    walletAddress,
-    tokens
-  );
-  console.log(balances);
-}
+   Each CSV file should contain wallet addresses in the first column.
 
-main().catch(console.error);
-```
+## Running the Script
 
-## Development
-
-To set up the project for development:
-
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Build the project: `npm run build`
-4. Run tests: `npm test`
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License.
+To run the script, use the following command:
