@@ -38,9 +38,12 @@ This tool analyzes bridged token amounts for wstETH, rETH, and apxETH across dif
    ```
 
 6. Place your CSV files in the `setup_files` directory using the following naming convention:
-   - `collateral-APXETH.csv`
-   - `collateral-RETH.csv`
-   - `collateral-WSTETH.csv`
+   - `mint-reward_token-KITE_collateral-APXETH.csv`
+   - `mint-reward_token-KITE_collateral-RETH.csv.csv`
+   - `mint-reward_token-KITE_collateral-WSTETH.csv.csv`
+   - `mint-reward_token-OP_collateral-APXETH.csv`
+   - `mint-reward_token-OP_collateral-RETH.csv.csv`
+   - `mint-reward_token-OP_collateral-WSTETH.csv.csv`
 
    Each CSV file should contain wallet addresses in the first column.
 
