@@ -11,3 +11,14 @@
 /setup_files
 /config.json
 /output
+
+# Existing entries
+node_modules/
+dist/
+.env
+
+# Add .DS_Store for all directories
+**/.DS_Store
+
+# Output files (if you want to ignore them)
+output/*.csv

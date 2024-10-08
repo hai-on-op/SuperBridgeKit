@@ -17,3 +17,4 @@ export const RETH_CONTRACT_ADDRESS: string = config.RETH_CONTRACT_ADDRESS;
 export const WSTETH_CONTRACT_ADDRESS: string = config.WSTETH_CONTRACT_ADDRESS;
 export const FROM_BLOCK: number = config.FROM_BLOCK;
 export const TO_BLOCK: number | null = config.TO_BLOCK;
+export const HOP_PROTOCOL_RETH_WRAPPER = config.HOP_PROTOCOL_RETH_WRAPPER;
