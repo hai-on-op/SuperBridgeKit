@@ -26,6 +26,7 @@ export const mapApxETHTransfers = (
   events: LogEvent[]
 ): ApxETHTransferEvent[] => {
   return events.map((event) => ({
+    blockHeight: event.block_height,
     from: event.decoded?.params.find((p) => p.name === "from")?.value || "",
     to: event.decoded?.params.find((p) => p.name === "to")?.value || "",
     amount: event.decoded?.params.find((p) => p.name === "value")?.value || "0",

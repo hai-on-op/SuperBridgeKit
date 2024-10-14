@@ -29,12 +29,14 @@ export type ApxETHTransferEvent = {
   from: string;
   to: string;
   amount: string;
+  blockHeight: number | null;
 };
 
 export type HopRETHTransferEvent = {
   from: string;
   to: string;
   amount: string;
+  blockHeight: number | null;
 };
 
 export interface FormattedAmount {
@@ -46,6 +48,7 @@ export interface TokenAmounts {
   standardBridge: FormattedAmount;
   hopBridge?: FormattedAmount;
   apxBridge?: FormattedAmount;
+  lidoBridge: FormattedAmount; // Change this line: remove the optional '?' and make it required
   total: FormattedAmount;
 }
 
@@ -57,4 +60,11 @@ export interface BridgedAmounts {
     apxETH: TokenAmounts;
   };
   totalCombined: FormattedAmount;
+}
+
+export interface LidoWstETHTransferEvent {
+  from: string;
+  to: string;
+  amount: string;
+  blockHeight: number | null;
 }

@@ -14,6 +14,7 @@ import {
 
 export const mapEventsOfStandardBridge = (events: LogEvent[]) =>
   events.map((event) => ({
+    blockHeight: event.block_height,
     name: event.decoded?.name,
     from: event.decoded?.params.find((p) => p.name === "from")?.value,
     to: event.decoded?.params.find((p) => p.name === "to")?.value,

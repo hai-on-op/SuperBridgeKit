@@ -29,6 +29,7 @@ This tool analyzes bridged token amounts for wstETH, rETH, and apxETH across dif
    - `APX_ETH_ADDRESS`: The apxETH token address
    - `RETH_CONTRACT_ADDRESS`: The rETH token address
    - `WSTETH_CONTRACT_ADDRESS`: The wstETH token address
+   - `HOP_PROTOCOL_RETH_WRAPPER`: The Hop Protocol rETH wrapper address
    - `FROM_BLOCK`: The starting block number for transaction filtering (default is 0)
    - `TO_BLOCK`: The ending block number for transaction filtering (use null for latest)
 
@@ -50,3 +51,18 @@ This tool analyzes bridged token amounts for wstETH, rETH, and apxETH across dif
 ## Running the Script
 
 To run the script, use the following command:
+
+
+
+## Output
+
+The script will generate a `bridged_amounts_detailed.json` file in the `output` directory, with the following structure:
+
+```
+{
+  "address": "0xaddress",
+  "bridgeTransactions": []
+}
+```
+
+This file will be used in the `minter-reward` repository

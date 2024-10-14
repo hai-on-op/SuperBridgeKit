@@ -14,10 +14,11 @@ import {
 } from "./services/standardBridge";
 import { processApxETHEvents } from "./services/apxEthBridge";
 import { processHopRETHEvents } from "./services/hopREthBridge";
+import { processLidoWstETHEvents } from "./services/lidoL2Bridge"; // Add this import
 import { calculateTotalBridgedAmounts } from "./services/bridgeCalculations";
 
 import { StandardBridgeEvent } from "./types";
-import { BridgedAmounts } from "./types"; // Add this import
+import { BridgedAmounts } from "./types";
 
 import {
   API_KEY,
@@ -36,7 +37,6 @@ const getBridgedAmounts = async (walletAddress: string) => {
   const fetcher = createCovalentFetcher(API_KEY, CHAIN_ID);
   const transactions = await fetcher(walletAddress);
 
-  // Filter transactions by block range
   const filteredTransactions = filterTransactionsByBlockRange(
     transactions,
     FROM_BLOCK,
@@ -65,21 +65,78 @@ const getBridgedAmounts = async (walletAddress: string) => {
     RETH_CONTRACT_ADDRESS
   );
 
+  // Add Lido wstETH events processing
+  const lidoWstETHEvents = await processLidoWstETHEvents(filteredTransactions)(
+    walletAddress,
+    CROSS_DOMAIN_MESSENGER_ADDRESS
+  );
+
   console.log(
     categorizedStandardBridgeEvents,
     "categorizedStandardBridgeEvents"
   );
 
-  // Calculate total bridged amounts
-  return calculateTotalBridgedAmounts(
-    walletAddress,
-    categorizedStandardBridgeEvents,
-    apxETHEvents,
-    hopRETHEvents,
-    WSTETH_CONTRACT_ADDRESS,
-    RETH_CONTRACT_ADDRESS,
-    APX_ETH_ADDRESS
-  );
+  const bridgeTransactions = [
+    ...Object.entries(categorizedStandardBridgeEvents).flatMap(
+      ([token, events]) => {
+        const getTokenNameOrAddress = (token: string) => {
+          switch (token.toLowerCase()) {
+            case RETH_CONTRACT_ADDRESS.toLowerCase():
+              return "RETH";
+            case APX_ETH_ADDRESS.toLowerCase():
+              return "APXETH";
+            case WSTETH_CONTRACT_ADDRESS.toLowerCase():
+              return "WSTETH";
+            default:
+              return token;
+          }
+        };
+
+        return events.map((event) => ({
+          bridgeName: "Standard Bridge",
+          token:
+            token === "eth"
+              ? "ETH"
+              : getTokenNameOrAddress(event.localToken || token),
+          amount: event.amount,
+          // @ts-ignore
+          blockHeight: event.blockHeight,
+        }));
+      }
+    ),
+    ...apxETHEvents.map((event) => ({
+      bridgeName: "apxETH Bridge",
+      token: "apxETH",
+      amount: event.amount,
+      blockHeight: event.blockHeight,
+    })),
+    ...hopRETHEvents.map((event) => ({
+      bridgeName: "Hop Bridge",
+      token: "rETH",
+      amount: event.amount,
+      blockHeight: event.blockHeight,
+    })),
+    ...lidoWstETHEvents.map((event) => ({
+      bridgeName: "Lido Bridge",
+      token: "wstETH",
+      amount: event.amount,
+      blockHeight: event.blockHeight,
+    })),
+  ];
+
+  return {
+    bridgeTransactions,
+    totalAmounts: calculateTotalBridgedAmounts(
+      walletAddress,
+      categorizedStandardBridgeEvents,
+      apxETHEvents,
+      hopRETHEvents,
+      lidoWstETHEvents,
+      WSTETH_CONTRACT_ADDRESS,
+      RETH_CONTRACT_ADDRESS,
+      APX_ETH_ADDRESS
+    ),
+  };
 };
 
 const getBridgedAmountsForAddresses = async (walletAddresses: string[]) => {
@@ -87,11 +144,12 @@ const getBridgedAmountsForAddresses = async (walletAddresses: string[]) => {
   for (const address of walletAddresses) {
     try {
       console.log(`Processing address: ${address}`);
-      const bridgedAmounts = await getBridgedAmounts(address);
-      results.push({ address, bridgedAmounts });
+      const { bridgeTransactions } = await getBridgedAmounts(address);
+
+      console.log(bridgeTransactions, "bridgeTransactions");
+      results.push({ address, bridgeTransactions });
       console.log(`Finished processing address: ${address}`);
-      // Add a delay between requests to further reduce the chance of hitting rate limits
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
       console.error(`Error processing address ${address}:`, error);
       results.push({ address, error: "Failed to process" });
@@ -144,7 +202,7 @@ const readAddressesFromCSV = () => {
 const generateCSVFiles = (
   bridgedAmountsForAddresses: {
     address: string;
-    bridgedAmounts: BridgedAmounts;
+    totalAmounts: BridgedAmounts;
   }[]
 ) => {
   const outputPath = path.join(__dirname, "..", "output");
@@ -158,29 +216,28 @@ const generateCSVFiles = (
     apxETH: [],
   };
 
-  bridgedAmountsForAddresses.forEach(({ address, bridgedAmounts }) => {
-    if (bridgedAmounts && bridgedAmounts.tokens) {
-      const { wstETH, rETH, apxETH } = bridgedAmounts.tokens;
+  bridgedAmountsForAddresses.forEach(({ address, totalAmounts }) => {
+    if (totalAmounts && totalAmounts.tokens) {
+      const { wstETH, rETH, apxETH } = totalAmounts.tokens;
 
       tokenData.wstETH.push({
         userAddress: address,
         standardBridgeAmount: wstETH.standardBridge.formatted,
+        lidoBridgeAmount: wstETH.lidoBridge?.formatted || "0",
         totalBridged: wstETH.total.formatted,
       });
 
       tokenData.rETH.push({
         userAddress: address,
         standardBridgeAmount: rETH.standardBridge.formatted,
-        //@ts-ignore
-        hopBridgeAmount: rETH.hopBridge.formatted,
+        hopBridgeAmount: rETH.hopBridge?.formatted || "0",
         totalBridged: rETH.total.formatted,
       });
 
       tokenData.apxETH.push({
         userAddress: address,
         standardBridgeAmount: apxETH.standardBridge.formatted,
-        //@ts-ignore
-        apxETHBridgeAmount: apxETH.apxBridge.formatted,
+        apxETHBridgeAmount: apxETH.apxBridge?.formatted || "0",
         totalBridged: apxETH.total.formatted,
       });
     }
@@ -196,15 +253,35 @@ const generateCSVFiles = (
   });
 };
 
+const generateJSONFile = (
+  bridgedAmountsForAddresses: {
+    address: string;
+    bridgeTransactions: any[];
+  }[]
+) => {
+  const outputPath = path.join(__dirname, "..", "output");
+  if (!fs.existsSync(outputPath)) {
+    fs.mkdirSync(outputPath);
+  }
+
+  const jsonContent = JSON.stringify(bridgedAmountsForAddresses, null, 2);
+  fs.writeFileSync(
+    path.join(outputPath, "bridged_amounts_detailed.json"),
+    jsonContent
+  );
+  console.log("Detailed JSON file has been created.");
+};
+
 const main = async () => {
   const addresses = readAddressesFromCSV();
   console.log("Unique addresses for each coin:");
   console.log(JSON.stringify(addresses, null, 2));
 
   // Combine all addresses for processing
+  // Combine all addresses for processing
   const allAddresses = [
-    //...new Set([...addresses.APXETH, ...addresses.RETH, ...addresses.WSTETH]),
-  "0x97525526C3Fcc9DA8a5109A7fbd49034fA13BED7"
+    ...new Set([...addresses.APXETH, ...addresses.RETH, ...addresses.WSTETH]),
+    "0x97525526C3Fcc9DA8a5109A7fbd49034fA13BED7",
   ];
 
   console.log(`Total unique addresses: ${allAddresses.length}`);
@@ -218,15 +295,16 @@ const main = async () => {
 
   // Generate CSV files
   generateCSVFiles(
-    bridgedAmountsForAddresses as {
-      address: string;
-      bridgedAmounts: BridgedAmounts;
-    }[]
+    // @ts-ignore
+    bridgedAmountsForAddresses.map(({ address, totalAmounts }) => ({
+      address,
+      bridgedAmounts: totalAmounts,
+    }))
   );
 
-  // Log the results
-  //console.log("Total Bridged Amounts for Multiple Addresses:");
-  //console.log(JSON.stringify(bridgedAmountsForAddresses, null, 2));
+  // Generate JSON file
+  // @ts-ignore
+  generateJSONFile(bridgedAmountsForAddresses);
 };
 
 main().catch((error) => {

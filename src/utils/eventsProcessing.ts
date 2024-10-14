@@ -1,8 +1,9 @@
 import { LogEvent, Transaction, Chain } from "@covalenthq/client-sdk";
 import { CategorizedStandardBridgeEvents, StandardBridgeEvent } from "../types";
 
-export const extractLogEvents = (transactions: Transaction[]): LogEvent[] =>
-  transactions.flatMap((tx) => tx.log_events || []);
+export const extractLogEvents = (transactions: Transaction[]): LogEvent[] => {
+  return transactions.flatMap((tx) => tx.log_events || []);
+};
 
 export const filterLogEventsBySenderAddresses =
   (addresses: string[]) =>
@@ -13,4 +14,3 @@ export const filterLogEventsBySenderAddresses =
           event.sender_address?.toLowerCase() === address.toLowerCase()
       )
     );
-
