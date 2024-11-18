@@ -1,5 +1,29 @@
 import { GoldRushClient, Chain, Transaction } from "@covalenthq/client-sdk";
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 seconds
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function retryOperation<T>(
+  operation: () => Promise<T>,
+  retries: number = MAX_RETRIES,
+  delay: number = RETRY_DELAY,
+  attempt: number = 1
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (attempt === retries) {
+      console.error(`Failed after ${retries} attempts:`, error);
+      throw error;
+    }
+    console.log(`Attempt ${attempt} failed, retrying in ${delay/1000} seconds...`);
+    await sleep(delay);
+    return retryOperation(operation, retries, delay * 1.5, attempt + 1);
+  }
+}
+
 export const createCovalentFetcher =
   (apiKey: string, chainId: Chain) => async (walletAddress: string) => {
     console.log(`Starting to fetch transactions for wallet: ${walletAddress}`);
@@ -9,19 +33,28 @@ export const createCovalentFetcher =
     let allTransactions: Transaction[] = [];
     let pageNumber = 0;
     let hasNextPage = true;
-    const MAX_PAGES = 100; // Adjust this value as needed
+    const MAX_PAGES = 100;
 
     console.log("Fetching transactions...");
 
     while (hasNextPage && pageNumber < MAX_PAGES) {
       try {
         console.log(`Fetching page ${pageNumber}...`);
-        const resp =
-          await client.TransactionService.getTransactionsForAddressV3(
+        
+        const resp = await retryOperation(async () => {
+          const response = await client.TransactionService.getTransactionsForAddressV3(
             chainId,
             walletAddress,
             pageNumber
           );
+
+          if (response.error) {
+            console.error(response)
+            throw new Error(`API Error: ${response.error_message}`);
+          }
+
+          return response;
+        });
 
         if (resp.data?.items) {
           const newTransactions = resp.data.items;
@@ -37,15 +70,13 @@ export const createCovalentFetcher =
         hasNextPage = resp.data?.links?.next !== null;
         pageNumber++;
 
-        if (resp.error) {
-          console.error(
-            `Error fetching page ${pageNumber}:`,
-            resp.error_message
-          );
-          break;
+        // Add delay between pages to avoid rate limiting
+        if (hasNextPage) {
+          await sleep(500); // 500ms delay between pages
         }
+
       } catch (error) {
-        console.error(`Error fetching page ${pageNumber}:`, error);
+        console.error(`Failed to fetch page ${pageNumber} after all retries:`, error);
         break;
       }
     }
